@@ -1,0 +1,103 @@
+---
+title: "EP01-respuesta-equipo-3"
+author: "Javier Villegas, Patricio Briceño, Juan Pablo Cárdenas"
+date: "2024-03-20"
+output: html_document
+---
+Equipo 3: Javier Villegas, Patricio Briceño, Juan Pablo Cárdenas
+
+A continuación, se resuelve el problema 3 del ejercicio 1, siendo nosotros el grupo 3.
+
+Mediante el uso del archivo .csv ubicado en Uvirtual, se busca responder la pregunta: ¿Se distribuye de igual manera la situación ocupacional de los hombres que viven en áreas rurales y quienes viven en áreas urbanas de la RM?
+
+Antes de comenzar, hay que explicar que para la resolución de este problema, se van a estandarizar los valores por cada zona, esto ya que sacar un porcentaje del total de hombres no genera un buen valor, ya que claramente hay más gente viviendo en zona urbana que en rural, por ello es que, para sacar por ejemplo el valor de casados, hacemos lo siguiente:
+
+- Primero, se obtiene la cantidad total de hombres viviendo en zona urbana, y el total que viven en zonas rurales
+- Segundo, se saca el porcentaje de hombres casados en zonas urbanas en relacion al total que vive en estas zonas. Se repite el proceso para hombres en zonas rurales
+- Tercero, se suman los porcentajes obtenidos en ambas zonas, y se obtiene un porcentaje
+
+Ej: Supongamos un 5% de zona rural esta casado, y un 10% de zona urbana esta casado. Así, la suma es un 15% y por lo tanto, para sacar el porcentaje relativo rural se calcula 5/15, dando así un 33.3%, y aplicando lo mismo para hombres casados da un 66.6%, dando el 100% al sumarlos
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+if (!requireNamespace('ggplot2', quietly = TRUE)){
+  install.packages('ggplo2')
+}
+
+library(ggplot2)
+
+if (!requireNamespace('dplyr', quietly = TRUE)){
+  install.packages('dplyr')
+}
+
+library(dplyr)
+```
+
+```{r}
+#Se abre el archivo .csv y se lee
+data = read.csv2("EP01 Datos Casen 2017.csv")
+
+#Se tabula
+tabla = xtabs(~ ecivil + zona ,data = data %>% filter(sexo == "Hombre"))
+tabla_total = addmargins(tabla, 1)
+
+#Se mete la tabla en una matriz
+dfmatrix_tabla = as.data.frame.matrix(tabla_total)
+
+#Nombramos una novena fila como "Total"
+rownames(dfmatrix_tabla)[9] = "Total"
+
+#Se imprime la tabla
+dfmatrix_tabla
+
+#Se calculan las sumas de personas en cada zona
+total_rural = sum(as.data.frame.matrix(tabla)[,1])
+total_urbano =sum(as.data.frame.matrix(tabla)[,2])
+
+#Se almacenan en variables las columnas con los datos de las zonas rural y urbana
+col_rural = dfmatrix_tabla$Rural
+col_urbano = dfmatrix_tabla$Urbano
+
+#Se instancian factores vacíos
+vectorp_rural = c()
+vectorp_urbano = c()
+
+#Este ciclo for se encarga de estandarizar los valores de cada situacion ocupacional por cada zona
+for (i in 1:8) {
+  #Se obtienen los porcentajes relativos a cada zona por cada situación ocupacional
+  porc1 = col_rural[i]/total_rural
+  porc2 = col_urbano[i]/total_urbano
+  
+  #Se suman, por ejemplo, asalariados rurales + asalariados urbanos
+  suma = porc1 + porc2
+  
+  #Se obtienen los porcentajes relativos entre zona rural y urbana
+  tp1 = porc1/suma
+  tp2 = porc2/suma
+  vectorp_rural = c(vectorp_rural, tp1)
+  vectorp_urbano = c(vectorp_urbano, tp2)
+}
+#Se transforma la tabla a un data.frame
+df_tabla = as.data.frame(tabla)
+
+#Se hace un dataframe para los valores estandarizados
+df_estandarizado = data.frame(Situacion_Ocupacional= c("Anulado", "Casado", "Conviviente civil", "Conviviente o pareja sin acuerdo de unión civil", "Divorciado", "Separado", "Soltero", "Viudo"), vectorp_rural, vectorp_urbano)
+df_estandarizado
+
+#Se grafica el gráfico con las frecuencias reales (por unidad)
+g1 = ggplot(df_tabla, aes(fill= zona, y=Freq, x = ecivil)) + geom_bar(stat = "identity")+
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+g1
+
+#Se grafica el gráfico de barras estandarizado
+g2 = ggplot(df_estandarizado, aes(x = Situacion_Ocupacional)) + geom_bar(aes(y=1, fill = "Urbano"),stat = "identity", position = "stack")+ geom_bar(aes(y=vectorp_rural, fill ="Rural"),stat = "identity", position = "stack")+  scale_fill_manual(values = c("Rural" = "purple", "Urbano" = "blue"), guide = "legend")+
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + labs ( y = "Frecuencia estandarizada", x = " Situación Ocupacional ",
+title = "Distribución de Situación ocupacional de hombres y zona de residencia ")+guides(fill = guide_legend(title = "Leyenda")) +
+  theme(legend.position = "right")
+g2
+```
+
+Así, se puede concluir que no hay mucha diferencia en la distribución entre cada situación social entre las zonas urbanas y rurales, a excepción de la situación "Anulada", en donde en zona urbana se encuentran 20 hombres, y rurales 0, y de la situación de conviviente civil, en donde la diferencia es de 1 (rural) y 22(urbano), en donde esta diferencia grafica se ve tan grande debido a que son números relativamente pequeños comparados a otras situaciones ocupacionales.

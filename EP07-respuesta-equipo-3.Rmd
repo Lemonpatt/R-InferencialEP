@@ -1,0 +1,271 @@
+---
+title: "EI-EP07-respuesta-equipo-3"
+output: html_document
+date: "2024-04-25"
+---
+
+```{r libraries, message=FALSE, warning=FALSE, include=FALSE}
+
+if (!requireNamespace('tidyverse', quietly = TRUE)){
+  install.packages('tidyverse')
+}
+
+if (!requireNamespace('dplyr', quietly = TRUE)){
+  install.packages('dplyr')
+}
+
+if (!requireNamespace('ggpubr', quietly = TRUE)){
+  install.packages('ggpubr')
+}
+
+if (!requireNamespace('ez', quietly = TRUE)){
+  install.packages('ez')
+}
+
+library(dplyr)
+library(ggpubr)
+library(ez)
+library(tidyverse)
+
+```
+
+En el trabajo de título de una estudiante del DIINF se reportan tiempos de ejecución (en milisegundos) y la cercanía con la solución óptima (en por ciento) de la mejor solución encontrada con tres versiones de un algoritmo genético para resolver instancias del problema del vendedor viajero disponibles en repositorios públicos. Ahora debe enfrentar el análisis de estos datos, por que está solicitando ayuda de las y los estudiantes de Estadística Inferencial.
+
+#### 1. Observando los datos, la memorista sospecha que hay diferencias significativas en el tiempo de ejecución entre las versiones A y C del algoritmo cuando las instancias tienen 60 o más nodos. ¿Los datos respaldan la intuición de la memorista?
+Para responder, filtren los datos para tener las instancias con 60 o más nodos y seleccionen las columnas de los tiempos de ejecución de las versiones A y C en formato ancho. Usando como semilla el valor 73, obtenga muestras aleatorias independientes de 24 tiempos registrados por la versión A y 20 tiempos registrados por la versión C del algoritmo. Realicen un análisis estadístico pertinente (enunciar hipótesis, revisar condiciones, seleccionar prueba) para responder la pregunta planteada, utilizando pruebas no paramétricas de ser necesario.
+
+```{r 1, warning=FALSE}
+
+datos = read.csv("EP07 Datos.csv")
+datos2 = datos %>% filter(datos$n.nodos >= 60)
+
+tA = datos2 %>% select(tiempo.A)
+tB = datos2 %>% select(tiempo.B)
+tC = datos2 %>% select(tiempo.C)
+
+set.seed(73)
+sampleA = data.frame(tiempo.A = sample(tA$tiempo.A,24))
+sampleC = data.frame(tiempo.C = sample(tC$tiempo.C,20))
+
+# Se hace una prueba QQ de normalidad para ver si el tiempo de los 3 algoritmos siguen una distribución normal
+
+# Prueba de normalidad con gráfico QQ
+g = ggqqplot(tA,
+         x = "tiempo.A",
+         color = "red")
+g
+# Prueba de normalidad con gráfico QQ
+g2 = ggqqplot(tB,
+         x = "tiempo.B",
+         color = "blue")
+g2 
+# Prueba de normalidad con gráfico QQ
+g3 = ggqqplot(tC,
+         x = "tiempo.C",
+         color = "green")
+
+g3
+
+# Con los resultados obtenidos en los tres gráficos, se puede observar que ningún algoritmo sigue una distribución normal en relación al tiempo de las instancias, esta información se usará en las siguientes preguntas.
+
+# Tenemos una comparación entre dos grupos de tiempos de algoritmos los cuales no siguen una distribución normal pero la forma de la distribución es parecida, lo cual es importante  para comparar medianas. Las variables son independientes, están en una escala ordinal y son solo dos grupos, por lo tanto, se usará la prueba de Wilcoxon-Mann-Whitney (Se cumplen las condiciones para el uso de esta prueba).
+
+# H0 -> No hay diferencia entre los tiempos en las instancias con igual o mas de 60 nodos de las versiones A y C
+# H1 -> Hay diferencia entre los tiempos en las instancias con igual o mas de 60 nodos de las versiones A y C 
+
+prueba = wilcox.test(sampleA$tiempo.A,sampleC$tiempo.C,alternative = "two.sided", conf.level= 1 - 0.05)
+print(prueba)
+
+# p = 0.649, por lo tanto, no hay suficiente evidencia para rechazar la hipótesis nula con un 95% de confianza, entonces no hay diferencia entre los tiempos en las instancias con igual o más de 60 nodos de las versiones A y C.
+
+```
+
+#### 2. La memorista también sospecha que, al comparar las mismas instancias de iguales características, las mejores soluciones encontradas por las versiones A y B tienen rendimientos distintos. ¿Estará en lo cierto?
+Para responder, filtren los datos para tener las instancias con 60 o más nodos y seleccionen las columnas con el mejor rendimiento de las versiones A y B en formato ancho. Usando como semilla el valor 13, obtengan una muestra aleatoria de 22 instancias. Realicen un análisis estadístico pertinente (enunciar hipótesis, revisar condiciones, seleccionar prueba) para responder la pregunta planteada, utilizando pruebas no paramétricas de ser necesario.
+
+```{r 2, warning=FALSE}
+
+
+#Aislamos los datos del rendimiento del algoritmo A y B
+tA2 = datos2 %>% select(mejor.A,instancia)
+tB2 = datos2 %>% select(mejor.B,instancia)
+
+set.seed(13)
+#Tiene que ser una muestra pareada, por lo tanto 
+instancias_muestreadas <- sample(datos2$instancia, 22)
+
+sampleA2 <- datos2 %>%
+  filter(instancia %in% instancias_muestreadas) %>%
+  select(mejor.A)
+
+sampleB2 <- datos2 %>%
+  filter(instancia %in% instancias_muestreadas) %>%
+  select(mejor.B)
+
+
+#Se hace una prueba QQ de normalidad para ver si el rendimiento encontrado de los 2 algoritmos siguen una distribución normal
+
+# Prueba de normalidad con gráfico QQ
+g = ggqqplot(tA2,
+         x = "mejor.A",
+         color = "red")
+g
+
+
+# Prueba de normalidad con gráfico QQ
+g2 = ggqqplot(tB2,
+         x = "mejor.B",
+         color = "blue")
+g2 
+
+# Claramente no siguen una distribución normal, aunque la forma de la distribución se parecen, por lo tanto se usará una prueba no paramétrica.
+
+# Las variables son independientes, están en una escala ordinal y son solo dos grupos muestrales pareados, por lo tanto, se usará la Prueba de suma de
+# rangos con signo de Wilcoxon (Con lo anterior mencionado, se cumplen las condiciones para el uso de esta prueba).
+
+# H0 -> No hay diferencia entre los rendimientos en instancias iguales de las mismas características de 60 nodos o más en las versiones A y B
+# H1 -> hay diferencia entre los rendimientos en instancias iguales de las mismas características de 60 nodos o más en las versiones A y B
+
+prueba = wilcox.test(sampleA2$mejor.A,sampleB2$mejor.B,alternative = "two.sided", conf.level= 1 - 0.05, paired = TRUE)
+print(prueba)
+
+# Dado un p-value 0.0016, que está por debajo del nivel de significación (0.05), se tiene suficiente evidencia para rechazar la hipótesis nula con un 95% de confianza en favor a la alternativa, por lo tanto si se encuentra que haya una diferencia entre los rendimientos con instancias iguales de mismas características de 60 o más nodos para las versiones de algoritmo A y B.
+```
+
+#### 3. La memorista sospecha que hay diferencias significativas en el tiempo de ejecución entre las versiones del algoritmo cuando las instancias de prueba tienen 50 o más nodos. ¿Los datos respaldan la intuición de la memorista?
+Para responder, filtren los datos para tener las instancias con 50 o más nodos y seleccionen las columnas con los tiempos de ejecución registrados (en formato ancho). Usando como semilla el valor 43, obtengan muestras aleatorias independientes de 15, 15 y 13 tiempos registrados por las versiones A, B y C, respectivamente. Realicen un análisis estadístico pertinente (enunciar hipótesis, revisar condiciones, seleccionar prueba) para responder la pregunta planteada, utilizando pruebas no paramétricas de ser necesario.
+
+```{r 3, warning=FALSE}
+
+# Para esta prueba, se podría usar ANOVA de una vía para muestras independientes, pero al ser las muestras de distinto tamaño, más de 2 grupos y no seguir una distribución normal (comprobado en la primera pregunta), se opta por usar la prueba alternativa no paramétrica Kruskal-Willis
+
+# Se enuncian las hipótesis:
+
+# H0 -> No hay diferencias significativas en el tiempo de ejecución entre las versiones del algoritmo cuando las instancias tienen 50 o más nodos
+# H1 -> Al menos uno de los algoritmos presenta una diferencia significativa en el tiempo de ejecución con al menos algún otro algoritmo cuando las instancias tienen 50 o más nodos
+
+# Se filtran los datos para obtener las instancias con 50 o más nodos
+datos3 = datos %>% filter(datos$n.nodos >= 50)
+
+# Se obtienen las muestras aleatorias independientes
+set.seed(43)
+sampleA3 = sample(datos3$tiempo.A,15)
+sampleB3 = sample(datos3$tiempo.B,15)
+sampleC3 = sample(datos3$tiempo.C,13)
+Tiempo = c(sampleA3,sampleB3,sampleC3)
+
+Algoritmo <- c(rep("A", length(sampleA3)),
+              rep("B", length(sampleB3)),
+              rep("C", length(sampleC3))
+              )
+Algoritmo <- factor(Algoritmo)
+datos3x = data.frame(Tiempo,Algoritmo)
+
+# Se verifican las condiciones para realizar la prueba:
+
+# 1. La variable independiente (la versión del algoritmo) tiene al menos 2 niveles. En este caso se cumple esta condición ya que cuenta con 3 
+# niveles.
+# 2. La escala de la variable dependiente (el tiempo) debe ser, a lo menos, ordinal. El tiempo es medible en intervalos iguales, por lo tanto se cumple esta condición.
+# 3. Las observaciones son independientes entre sí. Se tomaron para cada algoritmo una muestra aleatoria independiente, por lo tanto se cumple esta condición.
+
+# Establecer nivel de significación
+alfa <- 0.05
+
+# Hacer la prueba de Kruskal-Wallis. 
+prueba <- kruskal.test(Tiempo ~ Algoritmo, data = datos3x)
+print(prueba)
+
+# La prueba de Kruskal-Willis brinda un p-value = 0.0145, por lo tanto, se rechaza la hipótesis nula en favor de la alternativa para un nivel de
+# significación 0.05. En consecuencia, se puede concluir con un 95% de confianza que al menos uno de los algoritmos presenta una diferencia 
+# significativa en el tiempo de ejecución con al menos algún otro algoritmo cuando las instancias tienen 50 o más nodos.
+
+# Debido a que existe al menos una diferencia significativa entre algoritmos, se opta realizar un análisis post-hoc para determinar entre que
+# versiones del algoritmo está esa diferencia
+
+# Efectuar procedimiento post-hoc de Holm.
+post_hoc3 <- pairwise.wilcox.test(datos3x$Tiempo,
+                                datos3x$Algoritmo,
+                                p.adjust.method = "holm",
+                                paired = FALSE)
+print(post_hoc3)
+
+# Al analizar el procedimiento post-hoc de Holm, se concluye que solo existe una diferencia significativa en el tiempo de ejecución entre las
+# versiones de los algoritmos A y B, teniendo en cuenta un nivel de significación 0.05.
+
+```
+
+#### 4. La memorista también sospecha que, al comparar las mismas instancias con iguales características, las mejores soluciones encontradas por las diferentes versiones del algoritmo tienen rendimientos distintos. ¿Estará en lo cierto?
+Para responder, filtren los datos para tener las instancias con 50 o más nodos y seleccionen las columnas con los mejores rendimientos registrados. Usando como semilla el valor 71, obtengan una muestra aleatoria de 22 instancias. Lleven los datos a formato largo y utilicen una prueba no paramétrica apropiada para analizar los datos obtenidos. Realicen un análisis estadístico pertinente (enunciar hipótesis, revisar condiciones, seleccionar prueba) para responder la pregunta planteada, utilizando pruebas no paramétricas de ser necesario.
+
+```{r 4, warning=FALSE}
+
+# Para esta prueba, se podría usar ANOVA de una vía con muestras correlacionadas, pero se opta por probar la alternativa no paramétrica a esta prueba, siendo la Prueba de Friedman
+
+# Se enuncian las hipótesis:
+
+# H0 -> No hay diferencia entre los rendimientos en instancias iguales de las mismas características de 50 nodos o más en las versiones del algoritmo
+# H1 -> hay diferencia entre los rendimientos en instancias iguales de las mismas características de 50 nodos o más en las versiones del algoritmo
+
+set.seed(71)
+#Tiene que ser una muestra pareada, por lo tanto 
+instancias_muestreadas4 <- sample(datos3$instancia, 22)
+
+# Se obtiene la muestra aleatoria independiente
+sampleA4 <- unlist(datos3 %>%
+  filter(instancia %in% instancias_muestreadas4) %>%
+  select(mejor.A))
+
+sampleB4 <- unlist(datos3 %>%
+  filter(instancia %in% instancias_muestreadas4) %>%
+  select(mejor.B))
+
+sampleC4 <- unlist(datos3 %>%
+  filter(instancia %in% instancias_muestreadas4) %>%
+  select(mejor.C))
+
+Algoritmo4 <- c(rep("A", length(sampleA4)),
+              rep("B", length(sampleB4)),
+              rep("C", length(sampleC4))
+              )
+
+MejorTiempo = c(sampleA4,sampleB4,sampleC4)
+Instancia <- rep(1:22,3)
+Algoritmo4 <- factor(Algoritmo4)
+
+datos4 = data.frame(Instancia,MejorTiempo,Algoritmo4)
+
+# Se verifican las condiciones para realizar la prueba:
+
+# 1. La variable independiente (la versión del algoritmo) debe ser categórica y tener a lo menos 3 niveles. En este caso se cumple esta condición ya
+# que nuestra variable independiente Algoritmo es categóriica y cuenta con 3 niveles (A, B, y C) 
+# 2. La escala de la variable dependiente (el tiempo) debe ser, a lo menos, ordinal. El tiempo es medible en intervalos iguales, por lo tanto se cumple esta condición.
+# 3. Las observaciones son una muestra aleatoria e independiente de la población. Se tomó una muestra aleatoria independiente de los algoritmos para
+# realizar la prueba, por lo que se verifica esta condición..
+
+# Establecer nivel de significación
+alfa = 0.05
+
+# Hacer la prueba de Friedman. 
+prueba4 = friedman.test(MejorTiempo ~ Algoritmo4 | Instancia, data = datos4)
+print(prueba4)
+
+# La prueba de Friedman brinda un p-value = 0.001253, por lo tanto, se rechaza la hipótesis nula en favor de la alternativa para un nivel de
+# significación 0.05. En consecuencia, se puede concluir con un 95% de confianza que al menos uno de los algoritmos presenta una diferencia 
+# significativa en el rendimiento con al menos algún otro algoritmo cuando las instancias tienen 50 o más nodos.
+
+# Debido a que existe al menos una diferencia significativa entre algoritmos, se opta realizar un análisis post-hoc para determinar entre que
+# versiones del algoritmo está esa diferencia
+
+# Efectuar procedimiento post-hoc de Holm.
+post_hoc4 <- pairwise.wilcox.test(datos4$MejorTiempo,
+                                  datos4$Algoritmo4,
+                                  p.adjust.method = "holm",
+                                  paired = TRUE)
+print(post_hoc4)
+
+# Al analizar el procedimiento post-hoc de Holm, se concluye que solo existe una diferencia significativa en el rendimiento entre las
+# versiones de los algoritmos A y B, teniendo en cuenta un nivel de significación 0.05, mientras que entre el algoritmo A y C quedan al límite para ser considerados dentro de grupos con diferencias significativas, con un p-value de 0.0502. Al hacer la prueba con el método de bonferroni, se obtiene que entre A y C hay un p value de 0.07, por lo que se ha elegido descartarlo en la conclusión.
+
+```
+
+

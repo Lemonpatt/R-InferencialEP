@@ -1,0 +1,252 @@
+---
+title: "EP01-respuesta-equipo-3"
+author: "Javier Villegas, Patricio Briceño, Juan Pablo Cárdenas"
+date: "2024-03-20"
+output: html_document
+---
+Equipo 3: Javier Villegas, Patricio Briceño, Juan Pablo Cárdenas
+
+A continuación, se resuelven las preguntas planteadas para el equipo 3
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+if (!requireNamespace('ggplot2', quietly = TRUE)){
+  install.packages('ggplo2')
+}
+
+library(ggplot2)
+
+if (!requireNamespace('dplyr', quietly = TRUE)){
+  install.packages('dplyr')
+}
+
+library(ggpubr)
+
+if (!requireNamespace('ggpubr', quietly = TRUE)){
+  install.packages('ggpubr')
+}
+
+library(ggpubr)
+
+if (!requireNamespace('dplyr', quietly = TRUE)){
+  install.packages('dplyr')
+}
+
+library(dplyr)
+```
+
+
+Para todas las preguntas se usó un nivel de significacia de $\alpha = 0.05$ ya que no se vió la necesidad de hacer los análisis de manera más amplia o acotada.
+
+
+```{r}
+#Se lee el archivo .csv
+dataframe = read.csv2("EP02 Datos.csv")
+
+#Se muestra la tabla con los datos extraidos del .csv
+print(dataframe)
+```
+
+## *Pregunta 1*:
+
+El Comité Olímpico cree que el mejor tiempo medio de los atletas de raza blanca después de ingresar al programa de entrenamiento es de 13,6 segundos. ¿Soportan los datos esta afirmación?
+
+R: Para responder, primero se han de establecer las hipótesis alternativa y nula. Como en este caso se pide comprobar una igualdad, siendo en este caso 13,6[s], establecemos las siguientes hipótesis:
+
+
+- Hipótesis nula: El mejor tiempo medio de los atletas de raza blanca posterior al programa de entrenamiento es **igual** a 13.6 segundos \[\mu = 13,6~segundos\]
+
+
+- Hipótesis alternativa: El mejor tiempo medio de los atletas de raza blanca posterior al programa de entrenamiento es **distinto** de 13.6 segundos \[\mu \neq 13,6~segundos\]
+
+Además, hay que considerar que solo se mencionan los elementos de atletas de raza blanca, y su tiempo posterior, por lo tanto se debe hacer uso de un test de una sola muestra. En este caso específico, se hace uso del test de T de Student para una sola muestra, siendo que la muestra es de un tamaño menor a 30, lo cual se calcula luego dentro del código
+
+Así, se procede con el código.
+
+```{r}
+# Se crea una nueva data respecto a los atletas de raza blanca
+datablanca = dataframe %>% filter(Raza == "Blanca")
+print(datablanca)
+
+# Nivel de significancia del 5%
+alpha = 0.05
+
+# Verificar si la distribucion se acerca a la normal para el uso de pruebas
+dif <- shapiro.test(datablanca$Posterior)
+print(dif)
+
+# Se grafican los datos en un gráfico Q-Q
+gdif = ggqqplot(data = datablanca,
+             x = "Posterior",
+             ylab = "Tiempos posteriores",
+             title = "Gráfico Q-Q de los atletas blancos previos al entrenamiento",
+             xlab = "Teórico")
+print(gdif)
+
+# A partir de los datos observados en el shapiro test y el grafico Q-Q, se acepta que los datos se acercan a una distribucion normal, a pesar de contener datos atipicos
+
+# Media establecida en la hipótesis nula
+mu= 13.6
+
+#  Como el tamaño de la muestra de atletas blancos es menor a 30, se hace uso del test T de student, considerando que el resultado del test de shapiro confirmo que hay cierta normalidad en la distribución, para poder concluir qué hipótesis es la que se respalda con un 95% de confianza
+t1 = t.test(datablanca$Posterior, alternative = "two.sided", mu = mu)
+print(t1)
+
+#Las siguientes sentencias están hechas para concluir acerca de si se respalda o se rechaza la hipótesis nula de acuerdo a los calculos hechos anteriormente
+if (t1$p.value > (alpha/2)){
+  cat("Como conclusión, no hay suficiente evidencia para rechazar la hipótesis nula con un 95% de confianza, por lo tanto el mejor tiempo medio de los atletas de raza blanca después de ingresar al programa puede ser igual a 13,6 segundos.")
+} else  {
+  cat("Como conclusión, existe suficiente evidencia para rechazar la hipótesis nula con un 95% de confianza, por lo tanto el mejor tiempo medio de los atletas de raza blanca después de ingresar al programa es distinto a 13,6 segundos.")
+}
+```
+
+## *Pregunta 2*:
+
+¿Sugieren los datos que la mejor marca de los atletas de raza oriental se reduce en promedio menos de 4,7 segundos tras el entrenamiento?
+
+R:Considerando lo preguntado, se pregunta por una reducción menor de 4.7 segundos entre los datos Posteriores y Previos al programa de entrenamiento. Así, las hipótesis son:
+
+- Hipótesis nula: La media de las diferencias entre los datos posteriores y previos al programa de entrenamiento es **igual** a 4.7 segundos \[\mu = 4.7~segundos\]
+
+- Hipótesis alternativa: La media de las diferencias entre los datos posteriores y previos al programa de entrenamiento es **menor** a 4.7 segundos \[\mu < 4.7~segundos\]
+
+Para esta pregunta, se dan los datos de la raza oriental, pero se deben usar tanto los tiempos previos como posteriores para el entrenamiento. Considerando que solo se habla de la raza Oriental, y que se piden 2 tiempos diferentes, hay presencia de dos muestras pariadas, siendo estas los tiempos previos y posteriores, referentes a los atletas orientales.
+
+Así, el código para calcular qye hipótesis es la que se respaldaría con un 95% de confianza sería el siguiente:
+
+```{r}
+# Se filtran los datos de los atletas orientales de la tabla original
+dataoriental = dataframe %>% filter(Raza == "Oriental")
+print(dataoriental)
+
+# Verificar si la distribucion se acerca a la normal para el uso de pruebas
+dif <- shapiro.test(dataoriental$Posterior - dataoriental$Previo)
+print(dif)
+
+# Se grafican los datos obtenidos por el test de Shapiro en un gráfico Q-Q
+gdif = ggqqplot(data = dataoriental,
+             x = "Previo-Posterior",
+             ylab = "Reducción entre los tiempos previos y posteriores",
+             title = "Gráfico Q-Q de los atletas orientales y sus diferencias entre el entrenamiento posterior y previo",
+             xlab = "Teórico")
+print(gdif)
+
+
+# Media entre la diferencia entre tiempos establecida en la hipótesis nula
+mu = 4.7
+
+# Después de haber comprobado la similitud a la distribución normal, y el hecho de que la cantidad de atletas orientales es menor a 30, se utiliza el test de T de student para poder concluir qué hipótesis es la que se respalda con un 95% de confianza, considerando además una paridad entre los datos debido a que son dos tipos de situaciones (posterior y previo al entrenamiento) de acuerdo a un mismo dato, siendo este el atleta
+t2 = t.test(dataoriental$Previo, dataoriental$Posterior, alternative = "less", mu = mu, paired = TRUE)
+print(t2)
+
+#Las siguientes sentencias están hechas para concluir acerca de si se respalda o se rechaza la hipótesis nula de acuerdo a los calculos hechos anteriormente
+if (t2$p.value > alpha){
+  cat("Como conclusión, no hay suficiente evidencia para rechazar la hipótesis nula con un 95% de confianza, por lo tanto es posible que la mejor marca de los atletas de raza oriental se reduzca en promedio 4,7 segundos o más después del entrenamiento.")
+} else  {
+  cat("Como conclusión, hay suficiente evidencia para rechazar la hipótesis nula con un 95% de confianza, por lo tanto es posible que la mejor marca de los atletas de raza oriental se reduzca en promedio menos de 4,7 segundos después del entrenamiento.")
+}
+```
+
+## *Pregunta 3*:
+
+¿Es posible afirmar que, en promedio, los atletas de raza negra superaban a los de raza blanca por más de 2 segundos antes del entrenamiento?
+
+R: Se pregunta si es posible afirmar que en promedio los atletas negros superan a los atletas blancos por más de 2 segundos, considerando los tiempos **previos** al programa de entrenamiento. Así, las hipótesis serían:
+
+- Hipótesis nula: La diferencia entre las medias estudiadas de los atletas negros y los atletas blancos es **igual** a 2 segundos \[μ~negra - μ~blanca = 2~segundos\]
+- Hipótesis alternativa: La diferencia entre las medias estudiadas de los atletas negros y los atletas blancos es **mayor** a 2 segundos  \[μ~negra - μ~blanca > 2~segundos\]
+
+Aquí hay que considerar que se pide sobre 2 razas distintas y un único tiempo, siendo este el previo al entrenamiento. Así, los datos a tomar de las distintas razas no son pareados, pues estos pueden variar en cantidad, y sus tiempos no están relacionados a una única muestra. Es así, que al realizar un test para respaldar alguna hipótesis se considera que no existe paridad entre los datos.
+
+Ahora, con el código siguiente se verá que hipótesis respaldar:
+
+```{r}
+#Se filtran los datos de la raza negra de la tabla original. Los datos de la raza blanca fueron ya tomados en la pregunta 1
+datanegra = dataframe %>% filter(Raza == "Negra")
+
+# Verificar si la distribucion se acerca a la normal para el uso de pruebas
+dif <- shapiro.test(datablanca$Previo)
+print(dif)
+
+# Se grafican los datos datos de la raza blanca para apoyar los resultados obtenidos por el test de shapiro
+gdif = ggqqplot(data = datablanca,
+             x = "Previo",
+             title = "Gráfico Q-Q de los atletas de raza blanca y sus tiempos previos al entrenamiento",
+             ylab = "Tiempos previos",
+             xlab = "Teórico")
+print(gdif)
+
+# Ahora se estudia la normalidad para los datos de la raza negra
+dif2 <- shapiro.test(datanegra$Previo)
+print(dif2)
+
+# Graficamos los datos de la raza negra
+gdif2 = ggqqplot(data = datanegra,
+                 x = "Previo",
+                 title = "Gráfico Q-Q de los atletas de raza negra y sus tiempos previos al entrenamiento",
+                 ylab = "Tiempos previos",
+                 xlab = "Teórico")
+print(gdif2)
+
+# Media a estudiar dada por la hipótesis nula
+mu = 2
+
+# Se aplica el test T de Student para las dos muestras no pareadas, esto considerando que las dos muestras son de distinto largo y no están tomadas respecto a un mismo sujeto. Además, debido al test de shapiro se pudo comprobar que existe una tendencia a la normalidad en la distribución.
+t3 = t.test(datablanca$Previo, datanegra$Previo, mu = mu, alternative = "greater")
+print(t3)
+
+#Las siguientes sentencias están hechas para concluir acerca de si se respalda o se rechaza la hipótesis nula de acuerdo a los calculos hechos anteriormente
+if (t3$p.value > alpha){
+  cat("En conclusión, no hay suficiente evidencia para rechazar la hipótesis nula con un 95% de confianza, por lo tanto es posible que en promedio los atletas de raza negra superen a los de raza blanca por 2 o menos segundos antes del entrenamiento.")
+} else  {
+  cat("En conclusión, hay suficiente evidencia para rechazar la hipótesis nula con un 95% de confianza, por lo tanto es posible que en promedio los atletas de raza negra superen a los de raza blanca por más de 2 segundos antes del entrenamiento.")
+}
+```
+
+## *Pregunta 4*:
+
+¿Será cierto que hay más atletas de raza blanca que redujeron sus mejores marcas en al menos 2,9 segundos que atletas de raza negra que lo hicieron en al menos 1,9 segundos?
+
+R: En la pregunta se mencionan las diferencias entre los tiempos posteriores y previos al entrenamiento entre las razas blancas y negras, por lo tanto tenemos 2 muestras. Las hipótesis para este problema serían:
+
+- Hipótesis nula: **No existe** diferencia entre las dos proporciones ( \[prop~blanca - prop~negra = 0\] )
+- Hipótesis alternativa: La proporción de los atletas de raza blanca con una mejora de su marca en 2,9 segundos es mayor a la proporción de los atletas negros con una mejora de sus marcas en 1,9 segundos ( \[prop~blanca - prop~negra > 0\] )
+
+Así, también hay que considerar que se está hablando de 2 razas y sus diferencias en los tiempos. Primero, se puede inferir que son muestras no pareadas ya que se están estudiando dos grupos distintos, los atletas de raza blanca y los de raza negra. Además, se está hablando de proporciones, ya que se habla acerca de llos aciertos de un grupo en contra de otro. Por lo tanto, para obtener un resultado en el cual se puedan comparar las proporciones justamente, se deben estudiar por separado. Es decir, atletas blancos que redujeron sus marcas en 2.9 segundos entre el total de blancos, y los atletas negros que redujeron sus marcas en 1.9 segundos entre el total de negros, y luego comparar las proporciones respectivas.
+
+Así, el código para poder concluir que hipótesis respaldar es el siguiente:
+
+```{r}
+#Contador para tener registro de la cantidad de atletas blancos que redujeron sus marcas en al menos 2.9 segundos
+
+n_blanco = nrow(datablanca)
+
+acierto_blanco = datablanca %>% filter(Previo-Posterior >= 2.9) %>% nrow()
+
+#Contador para tener registro de la cantidad de atletas negros que redujeron sus marcas en al menos 1.9 segundos
+
+n_negro = nrow(datanegra)
+acierto_negro = datanegra %>% filter(Previo-Posterior >= 1.9) %>% nrow()
+
+#Se muestran los casos favorables
+print(acierto_negro)
+print(acierto_blanco)
+
+
+#Se realiza el método de Wilson mediante el uso de la función prop.test para estudiar las dos proporciones anteriormente mencionadas.Se usa este método debido a que se están estudiando dos proporciones de muestras distintas, siendo estas los grupos de raza blanca y negra.
+t4 = prop.test(c(acierto_blanco, acierto_negro), c(n_blanco, n_negro), alternative = "greater")
+print(t4)
+
+#Las siguientes sentencias están hechas para concluir acerca de si se respalda o se rechaza la hipótesis nula de acuerdo a los calculos hechos anteriormente
+if (t4$p.value > alpha){
+  cat("En conclusión, no hay suficiente evidencia para rechazar la hipótesis nula con un 95% de confianza, por lo tanto es posible que la proporción de atletas de raza blanca que mejoraron sus marcas en 2.9 segundos no difiera de la proporción de atletas de raza negra que mejoraron sus marcas en 1.9 segundos entre los periodos previos y posteriores al entrenamiento")
+} else  {
+  cat("En conclusión, hay suficiente evidencia para rechazar la hipótesis nula con un 95% de confianza, por lo tanto se acepta la hipótesis alternativa, que la proporción de atletas de raza blanca que mejoraron sus marcas en 2.9 segundos sea mayor a la proporción de atletas de raza negra que mejoraron sus marcas en 1.9 segundos entre los periodos previos y posteriores al entrenamiento")
+}
+```
+
+
+
+
+

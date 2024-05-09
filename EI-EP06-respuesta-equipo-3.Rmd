@@ -1,0 +1,120 @@
+---
+title: "EP06-respuesta-equipo-3"
+date: "2024-04-17"
+output: html_document
+---
+
+```{r libraries, message=FALSE, warning=FALSE, include=FALSE}
+
+if (!requireNamespace('tidyverse', quietly = TRUE)){
+  install.packages('tidyverse')
+}
+
+if (!requireNamespace('dplyr', quietly = TRUE)){
+  install.packages('dplyr')
+}
+
+if (!requireNamespace('ggpubr', quietly = TRUE)){
+  install.packages('ggpubr')
+}
+
+if (!requireNamespace('ez', quietly = TRUE)){
+  install.packages('ez')
+}
+
+library(dplyr)
+library(ggpubr)
+library(ez)
+library(tidyverse)
+```
+
+Un equipo de investigadores del área de interacción humano-información está estudiando si el área temática y el nivel de dificultad del problema de información influyen en el tiempo (en segundos) que toma un usuario en formular una consulta de búsqueda para resolver dicho problema. Para ello, han reclutado a un grupo de participantes voluntarios, asignados aleatoriamente a distintos grupos. Cada participante debe resolver tres problemas de información con diferentes niveles de dificultad: baja, media y alta. A su vez, cada grupo debe resolver problemas relacionados a una temática diferente.
+
+#### En este momento, los investigadores buscan determinar si existen diferencias en el tiempo que tardan los usuarios en formular consultas para problemas con diferente nivel de dificultad en el área de química.
+```{r warning=FALSE}
+
+# H0 -> No existen diferencias en el tiempo que tardan los usuarios en formular una consulta entre las distintas dificultades en el área de química
+# H1 -> Existen diferencias en el tiempo que tardan los usuarios en formular una consulta entre las distintas dificultades en el área de química
+
+# PARA TODAS LAS PRUEBAS SE TENDRÁ EN CUENTA UN NIVEL DE SIGNIFICACIÓN DE 0.05
+
+# Se leen los datos
+datos = read.csv("EP06 Datos.csv")
+datos = datos %>% filter(area == "Química")
+DBaja = datos %>% filter(dificultad == "Baja") %>% select(tiempo,Baja=tiempo)
+DMedia = datos %>% filter(dificultad == "Media") %>% select(tiempo,Media=tiempo)
+DAlta = datos %>% filter(dificultad == "Alta") %>% select(tiempo,Alta=tiempo)
+instancia = factor(1:nrow(DMedia))
+
+datos = data.frame(instancia, DBaja, DMedia, DAlta)
+datos = datos %>% pivot_longer(c("Baja", "Media", "Alta"), names_to = "Dificultad", values_to = "Tiempo")
+
+# Verificamos las condiciones
+
+# 1. La primera condición se verifica, ya que la escala con que se mide la variable dependiente (el tiempo) tiene las propiedades de una escala de intervalos iguales
+
+# 2. El enunciado indica que las muestras son obtenidas de manera aleatoria, asi que se cumple la segunda condición
+
+# 3. Se verifica normalidad:
+
+# Prueba de normalidad con gráfico QQ (se ve que los datos tienden a la normalidad)
+g = ggqqplot(datos,
+         x = "Tiempo",
+         y = "Dificultad",
+         color = "Dificultad")
+g = g + facet_wrap(~ Dificultad)
+g
+
+#No se ven datos atípicos por lo que no es necesario hacer más pruebas, se cumple la tercera condición.
+
+# 4. Usaremos la función ezANOVA para realizar la prueba ANOVA y verificar la condición de que la matriz de varianzas-covarianzas es esférica
+
+#Con la misma función realizamos el test de Anova para muestras correlacionadas
+prueba <- ezANOVA (data = datos,
+                   dv = Tiempo,
+                   within = Dificultad,
+                   wid = instancia ,
+                   return_aov = TRUE)
+
+if (prueba$`Mauchly's Test for Sphericity`$p > 0.05){
+  cat("Se prueba la cuarta condición de ANOVA\n")
+  prueba$`Mauchly's Test for Sphericity`
+}
+
+#No hay diferencias, por lo que se cumple la esfericidad con un valor p de 0.36628
+
+
+prueba$ANOVA
+
+
+# # En cuanto a la conclusión del procedimiento ANOVA podemos ver que se tiene un p-value muy pequeño (mas pequeño que el nivel de significancia) por lo tanto se cumple la hipotesis alternativa planteada al comienzo de la solución del problema.
+
+# # En este caso, como existe una diferencia, sería adecuado realizar un análisis post-hoc para ver entre que grupos está esa diferencia (aunque la pregunta como tal solo nos menciona si es que existe una diferencia, por lo que la pregunta inicial ya ha sido respondida).
+# 
+# # Como el p-value resultante es muy pequeño, se puede usar la prueba de Bonferroni o Holm, ya que si bien son más conservadores, en este caso la diferencia debería observarse claramente
+# 
+# # Usando Bonferroni (prueba más conservadora que Holm)
+# alfa = 0.025
+# bonferroni <- pairwise.t.test(datos[["tiempo"]],
+#                                   datos[["pais"]],
+#                                   p.adj = "bonferroni",
+#                                   pool.sd = TRUE,
+#                                   paired = FALSE,
+#                                   conf.level = 1 - alfa)
+# bonferroni
+# 
+# Usando Holm
+holm <- pairwise.t.test(datos[["Tiempo"]],
+                                  datos[["Dificultad"]],
+                                  p.adj = "holm",
+                                  paired = TRUE)
+cat("Prueba de holm: ")
+holm
+
+# 
+# # Como se puede ver en los análisis post-hoc, las diferencias signicativas que se pueden observar son entre las dificultades Alta-Baja y Media-Baja, ya el p-value de ambas diferencias es menor al nivel de significancia (alfa = 0.05), no se encuentran diferencias entre el tiempo de formulación de búsquedas entre las preguntas de dificultad Alta-Media.
+# 
+# # Se concluye que: Sí existen diferencias en el tiempo que tardan los usuarios en formular una consulta entre las distintas dificultades en el área de química. Las diferencias están entre las dificultades de Alta-Baja y Media-Baja.
+
+```
+
